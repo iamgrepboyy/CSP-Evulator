@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSP Header Checker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .results-column {
+            display: grid;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-check {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-check:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-check:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+
+        .examples {
+            margin-top: 20px;
+        }
+
+        .example-btn {
+            width: 100%;
+            margin-bottom: 8px;
+            background: #f5f5f5;
+            color: #333;
+            text-align: left;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+        }
+
+        .example-btn:hover {
+            background: #efefef;
+            border-color: #667eea;
+        }
+
+        /* Results Styling */
+        .results-panel {
+            display: none;
+        }
+
+        .results-panel.active {
+            display: block;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .summary-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .summary-card.critical {
+            border-left-color: #e74c3c;
+        }
+
+        .summary-card.warning {
+            border-left-color: #f39c12;
+        }
+
+        .summary-card.recommendation {
+            border-left-color: #27ae60;
+        }
+
+        .summary-count {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .summary-card.critical .summary-count {
+            color: #e74c3c;
+        }
+
+        .summary-card.warning .summary-count {
+            color: #f39c12;
+        }
+
+        .summary-card.recommendation .summary-count {
+            color: #27ae60;
+        }
+
+        .summary-label {
+            color: #666;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .directives-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .directives-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .directive-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .directive-name {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .issues-section,
+        .warnings-section,
+        .recommendations-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .section-title.critical {
+            color: #e74c3c;
+        }
+
+        .section-title.warning {
+            color: #f39c12;
+        }
+
+        .section-title.recommendation {
+            color: #27ae60;
+        }
+
+        .icon {
+            margin-right: 10px;
+            font-size: 1.3em;
+        }
+
+        .issue-item,
+        .warning-item,
+        .recommendation-item {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .issue-item {
+            border-left-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.05);
+        }
+
+        .warning-item {
+            border-left-color: #f39c12;
+            background: rgba(243, 156, 18, 0.05);
+        }
+
+        .recommendation-item {
+            border-left-color: #27ae60;
+            background: rgba(39, 174, 96, 0.05);
+        }
+
+        .item-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .item-directive {
+            display: inline-block;
+            background: #e8e8e8;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #667eea;
+            margin-right: 8px;
+        }
+
+        .item-description {
+            color: #555;
+            margin: 8px 0;
+            font-size: 0.95em;
+        }
+
+        .item-value {
+            background: white;
+            padding: 8px;
+            border-radius: 3px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #333;
+            border: 1px solid #ddd;
+            word-break: break-all;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loader.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #ffe8e8;
+            border: 1px solid #e74c3c;
+            color: #c0392b;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .success-message {
+            background: #e8f8e8;
+            border: 1px solid #27ae60;
+            color: #229954;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .csp-header-display {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .csp-header-display label {
+            margin-bottom: 10px;
+        }
+
+        .csp-header-display code {
+            display: block;
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #333;
+            word-break: break-all;
+            margin-top: 8px;
+        }
+
+        .payloads-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .payload-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .payload-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .payload-code {
+            display: block;
+            background: #eef2ff;
+            color: #1a202c;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 10px;
+        }
+
+        .payload-note {
+            color: #555;
+            margin-top: 10px;
+            font-size: 0.95em;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.8em;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            margin-top: 10px;
+        }
+
+        .confidence-high {
+            background: #fde2e2;
+            color: #a71d2a;
+        }
+
+        .confidence-medium {
+            background: #fff4d9;
+            color: #7d5b00;
+        }
+
+        .confidence-low {
+            background: #d4edda;
+            color: #21683a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🔒 CSP Header Checker</h1>
+            <p>Analyze Content Security Policy headers for misconfigurations and security issues</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Input Panel -->
+            <div class="card">
+                <h2>📝 Input CSP Header</h2>
+
+                <div class="form-group">
+                    <label for="cspInput">Paste your CSP header below:</label>
+                    <textarea id="cspInput" placeholder="Example: default-src 'self'; script-src 'self' https://cdn.example.com;"></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-check" id="checkBtn" onclick="checkCSP()">Check CSP Header</button>
+                    <button class="btn-clear" id="clearBtn" onclick="clearInput()">Clear</button>
+                </div>
+
+                <div class="button-group" style="margin-top: 0;">
+                    <a class="btn-check" href="/csp-domains" style="text-align: center; text-decoration: none; display: inline-block;">View CSP Domains Reference</a>
+                </div>
+
+                <div class="examples">
+                    <h3 style="color: #667eea; margin-bottom: 10px; font-size: 0.95em;">📚 Examples:</h3>
+                    <button class="example-btn" onclick="loadExample('permissive')">Permissive (⚠️ Unsafe)</button>
+                    <button class="example-btn" onclick="loadExample('moderate')">Moderate</button>
+                    <button class="example-btn" onclick="loadExample('strict')">Strict (✓ Recommended)</button>
+                    <button class="example-btn" onclick="loadExample('report_only')">Report-Only</button>
+                </div>
+            </div>
+
+            <!-- Results Column -->
+            <div class="results-column">
+                <div class="card">
+                    <h2>📊 Analysis Results</h2>
+
+                    <div id="emptyState" class="empty-state">
+                        <p>👈 Enter a CSP header and click "Check" to see analysis results</p>
+                    </div>
+
+                    <div id="loader" class="loader">
+                        <div class="spinner"></div>
+                        <p>Analyzing CSP header...</p>
+                    </div>
+
+                    <div id="resultsPanel" class="results-panel">
+                        <div id="errorContainer"></div>
+                        <div id="successContainer"></div>
+
+                        <div id="cspHeaderDisplay" class="csp-header-display" style="display: none;">
+                            <label>CSP Header:</label>
+                            <code id="cspHeaderCode"></code>
+                        </div>
+
+                        <div id="summaryContainer"></div>
+                        <div id="directivesContainer"></div>
+                        <div id="issuesContainer"></div>
+                        <div id="warningsContainer"></div>
+                        <div id="recommendationsContainer"></div>
+                    </div>
+                </div>
+
+                <div class="card" id="payloadCard" style="display: none;">
+                    <h2>🧪 XSS Payloads</h2>
+                    <div id="payloadsContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load examples when page loads
+        async function loadExamples() {
+            try {
+                const response = await fetch('/api/examples');
+                const data = await response.json();
+                window.examples = data;
+            } catch (error) {
+                console.error('Error loading examples:', error);
+            }
+        }
+
+        // Load example CSP header
+        function loadExample(type) {
+            if (!window.examples || !window.examples[type]) {
+                alert('Example not found');
+                return;
+            }
+            document.getElementById('cspInput').value = window.examples[type];
+            checkCSP();
+        }
+
+        // Clear input
+        function clearInput() {
+            document.getElementById('cspInput').value = '';
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('resultsPanel').classList.remove('active');
+            document.getElementById('errorContainer').innerHTML = '';
+            document.getElementById('summaryContainer').innerHTML = '';
+            document.getElementById('directivesContainer').innerHTML = '';
+            document.getElementById('payloadsContainer').innerHTML = '';
+            document.getElementById('payloadCard').style.display = 'none';
+            document.getElementById('issuesContainer').innerHTML = '';
+            document.getElementById('warningsContainer').innerHTML = '';
+            document.getElementById('recommendationsContainer').innerHTML = '';
+            document.getElementById('cspHeaderDisplay').style.display = 'none';
+        }
+
+        // Main check function
+        async function checkCSP() {
+            const cspHeader = document.getElementById('cspInput').value.trim();
+
+            if (!cspHeader) {
+                alert('Please enter a CSP header');
+                return;
+            }
+
+            const loader = document.getElementById('loader');
+            const resultsPanel = document.getElementById('resultsPanel');
+            const emptyState = document.getElementById('emptyState');
+
+            loader.classList.add('active');
+            emptyState.style.display = 'none';
+            resultsPanel.classList.add('active');
+
+            try {
+                const response = await fetch('/api/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ csp_header: cspHeader })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    showError(data.error || 'An error occurred');
+                } else {
+                    displayResults(data);
+                }
+            } catch (error) {
+                showError('Failed to check CSP header: ' + error.message);
+            } finally {
+                loader.classList.remove('active');
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.innerHTML = `<div class="error-message">❌ ${message}</div>`;
+        }
+
+        // Display results
+        function displayResults(data) {
+            document.getElementById('errorContainer').innerHTML = '';
+
+            // Show CSP header
+            document.getElementById('cspHeaderCode').textContent = data.csp_header;
+            document.getElementById('cspHeaderDisplay').style.display = 'block';
+
+            // Display summary
+            displaySummary(data.summary);
+
+            // Display directives
+            displayDirectives(data.directives);
+
+            // Display issues
+            displayIssues(data.issues);
+
+            // Display warnings
+            displayWarnings(data.warnings);
+
+            // Display payloads separately in their own section
+            displayPayloads(data.payloads);
+
+            // Display recommendations
+            displayRecommendations(data.recommendations);
+        }
+
+        // Display payloads
+        function displayPayloads(payloads) {
+            const container = document.getElementById('payloadsContainer');
+            const payloadCard = document.getElementById('payloadCard');
+
+            if (!payloads || payloads.length === 0) {
+                container.innerHTML = '';
+                payloadCard.style.display = 'none';
+                return;
+            }
+
+            payloadCard.style.display = 'block';
+            let html = '<p style="margin-bottom: 18px; color: #555;">These payloads are calculated from the current CSP and shown as escaped text only so they will not execute on this page.</p>';
+            for (const payload of payloads) {
+                const confidence = payload.confidence ? ` <span class="confidence-badge confidence-${payload.confidence.toLowerCase()}">${escapeHtml(payload.confidence)}</span>` : '';
+                html += `
+                    <div class="payload-item">
+                        <div class="item-title">${escapeHtml(payload.description)}${confidence}</div>
+                        <div class="payload-code">${escapeHtml(payload.payload)}</div>
+                        <div class="payload-note">${escapeHtml(payload.note || '')}</div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // Display summary
+        function displaySummary(summary) {
+            const container = document.getElementById('summaryContainer');
+            container.innerHTML = `
+                <div class="summary-grid">
+                    <div class="summary-card critical">
+                        <div class="summary-count">${summary.critical_count}</div>
+                        <div class="summary-label">Critical Issues</div>
+                    </div>
+                    <div class="summary-card warning">
+                        <div class="summary-count">${summary.warning_count}</div>
+                        <div class="summary-label">Warnings</div>
+                    </div>
+                    <div class="summary-card recommendation">
+                        <div class="summary-count">${summary.recommendation_count}</div>
+                        <div class="summary-label">Recommendations</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Display directives
+        function displayDirectives(directives) {
+            const container = document.getElementById('directivesContainer');
+            if (Object.keys(directives).length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="directives-section"><h3>📋 Parsed Directives</h3>';
+            for (const [directive, values] of Object.entries(directives)) {
+                html += `
+                    <div class="directive-item">
+                        <span class="directive-name">${directive}:</span> ${values.join(' ')}
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Display issues
+        function displayIssues(issues) {
+            const container = document.getElementById('issuesContainer');
+            if (issues.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="issues-section"><div class="section-title critical"><span class="icon">⚠️</span>Critical Issues</div>';
+            for (const issue of issues) {
+                html += `
+                    <div class="issue-item">
+                        <div class="item-title">
+                            <span class="item-directive">${issue.directive || 'General'}</span>
+                            ${issue.issue}
+                        </div>
+                        <div class="item-description">${issue.description || ''}</div>
+                        ${issue.value ? `<div class="item-value"><strong>Value:</strong> ${escapeHtml(issue.value)}</div>` : ''}
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Display warnings
+        function displayWarnings(warnings) {
+            const container = document.getElementById('warningsContainer');
+            if (warnings.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="warnings-section"><div class="section-title warning"><span class="icon">⚠️</span>Warnings</div>';
+            for (const warning of warnings) {
+                html += `
+                    <div class="warning-item">
+                        <div class="item-title">
+                            <span class="item-directive">${warning.directive || 'General'}</span>
+                            ${warning.issue}
+                        </div>
+                        <div class="item-description">${warning.description || warning.recommendation || ''}</div>
+                        ${warning.value ? `<div class="item-value"><strong>Value:</strong> ${escapeHtml(warning.value)}</div>` : ''}
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Display recommendations
+        function displayRecommendations(recommendations) {
+            const container = document.getElementById('recommendationsContainer');
+            if (recommendations.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="recommendations-section"><div class="section-title recommendation"><span class="icon">💡</span>Recommendations</div>';
+            for (const rec of recommendations) {
+                if (rec.type === 'MISSING_DIRECTIVES') {
+                    html += `
+                        <div class="recommendation-item">
+                            <div class="item-title">Missing Directives</div>
+                            <div class="item-description">
+                                Add these directives for better security: <strong>${rec.directives.join(', ')}</strong>
+                            </div>
+                            <div class="item-description">${rec.description}</div>
+                        </div>
+                    `;
+                }
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Escape HTML for display
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Load examples on page load
+        loadExamples();
+
+        // Allow checking with Ctrl+Enter
+        document.getElementById('cspInput').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                checkCSP();
+            }
+        });
+    </script>
+</body>
+</html>
